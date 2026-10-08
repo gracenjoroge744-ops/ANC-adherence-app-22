@@ -184,11 +184,35 @@ with tab_dash:
         up = st.file_uploader("Upload client CSV", type="csv")
 
         if up is not None:
-            data = pd.read_csv(up)
+            # sep=None sniffs commas/semicolons; utf-8-sig removes a hidden BOM
+            data = pd.read_csv(up, sep=None, engine="python", encoding="utf-8-sig")
+            original_cols = list(data.columns)
+
+            def _key(name):
+                return "".join(ch for ch in str(name).lower() if ch.isalnum())
+
+            ALIASES = {
+                "age": "Age",
+                "village": "Village",
+                "distancekm": "Distance_km",
+                "distance": "Distance_km",
+                "maritalstatus": "Marital status",
+                "marital": "Marital status",
+                "gestationalweeks": "Gestational_weeks",
+                "gestationalage": "Gestational_weeks",
+                "ga": "Gestational_weeks",
+                "visitsattended": "Visits_attended",
+                "numberofvisits": "Visits_attended",
+                "patientid": "Patient_ID",
+                "id": "Patient_ID",
+            }
+            data = data.rename(columns={c: ALIASES[_key(c)] for c in data.columns if _key(c) in ALIASES})
+
             required = ["Age", "Village", "Distance_km", "Marital status"]
             missing = [c for c in required if c not in data.columns]
             if missing:
                 st.error(f"Missing columns: {', '.join(missing)}")
+                st.write("Columns found in your file:", original_cols)
             else:
                 data["Village"] = data["Village"].astype(str).str.strip().str.lower()
                 data["Marital status"] = data["Marital status"].astype(str).str.strip().str.lower()
